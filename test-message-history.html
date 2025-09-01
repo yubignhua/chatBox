@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息历史测试</title>
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .messages-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .message-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .message-user {
+            background: #e3f2fd;
+        }
+
+        .message-operator {
+            background: #f3e5f5;
+        }
+
+        .message-system {
+            background: #f5f5f5;
+            font-style: italic;
+        }
+
+        .log-area {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="test-container">
+            <h1>消息历史加载测试</h1>
+
+            <!-- 用户端测试 -->
+            <div class="test-section">
+                <h3>用户端</h3>
+                <el-button @click="connectUser" :disabled="userConnected" type="primary">
+                    {{ userConnected ? '已连接' : '连接用户' }}
+                </el-button>
+                <el-button @click="sendUserMessage" :disabled="!userConnected || !sessionId">
+                    发送消息
+                </el-button>
+                <br><br>
+                <el-input v-model="userMessage" placeholder="输入消息内容" style="width: 300px;"></el-input>
+                <p>会话ID: {{ sessionId || '未创建' }}</p>
+
+                <div class="messages-list">
+                    <div v-for="msg in userMessages" :key="msg.id"
+                        :class="['message-item', 'message-' + msg.senderType]">
+                        <strong>[{{ msg.senderType }}]</strong> {{ msg.content }}
+                        <small>({{ formatTime(msg.timestamp) }})</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 客服端测试 -->
+            <div class="test-section">
+                <h3>客服端</h3>
+                <el-button @click="connectOperator" :disabled="operatorConnected" type="success">
+                    {{ operatorConnected ? '已连接' : '连接客服' }}
+                </el-button>
+                <el-button @click="joinSession" :disabled="!operatorConnected || !sessionId || operatorJoined">
+                    {{ operatorJoined ? '已加入会话' : '加入会话' }}
+                </el-button>
+                <el-button @click="loadHistory" :disabled="!operatorJoined">
+                    手动加载历史
+                </el-button>
+                <br><br>
+                <el-input v-model="operatorMessage" placeholder="输入回复内容" style="width: 300px;"></el-input>
+                <el-button @click="sendOperatorMessage" :disabled="!operatorJoined">发送回复</el-button>
+
+                <div class="messages-list">
+                    <div v-for="msg in operatorMessages" :key="msg.id"
+                        :class="['message-item', 'message-' + msg.senderType]">
+                        <strong>[{{ msg.senderType }}]</strong> {{ msg.content }}
+                        <small>({{ formatTime(msg.timestamp) }})</small>
+                    </div>
+                </div>
+
+                <p>历史消息数量: {{ operatorMessages.length }}</p>
+            </div>
+
+            <!-- 日志区域 -->
+            <div class="test-section">
+                <h3>事件日志</h3>
+                <el-button @click="clearLogs" size="small">清空日志</el-button>
+                <div class="log-area">
+                    <div v-for="log in logs" :key="log.id">
+                        {{ log.timestamp }} - {{ log.message }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                // 连接状态
+                userSocket: null,
+                operatorSocket: null,
+                userConnected: false,
+                operatorConnected: false,
+                operatorJoined: false,
+
+                // 会话信息
+                sessionId: null,
+                userId: 'test_user_' + Date.now(),
+                operatorId: 'test_operator_' + Date.now(),
+
+                // 消息
+                userMessage: '你好，我需要帮助！',
+                operatorMessage: '您好，我是客服，有什么可以帮助您的？',
+                userMessages: [],
+                operatorMessages: [],
+
+                // 日志
+                logs: []
+            },
+
+            methods: {
+                log(message) {
+                    this.logs.push({
+                        id: Date.now() + Math.random(),
+                        timestamp: new Date().toLocaleTimeString(),
+                        message: message
+                    });
+
+                    // 保持日志数量在100条以内
+                    if (this.logs.length > 100) {
+                        this.logs.shift();
+                    }
+                },
+
+                clearLogs() {
+                    this.logs = [];
+                },
+
+                connectUser() {
+                    this.userSocket = io('http://localhost:3001', {
+                        transports: ['polling', 'websocket']
+                    });
+
+                    this.userSocket.on('connect', () => {
+                        this.userConnected = true;
+                        this.log('用户连接成功: ' + this.userSocket.id);
+
+                        // 自动加入聊天
+                        this.userSocket.emit('user-join-chat', {
+                            userId: this.userId
+                        });
+                    });
+
+                    this.userSocket.on('chat-session-created', (data) => {
+                        this.sessionId = data.sessionId;
+                        this.log('会话创建成功: ' + data.sessionId);
+                    });
+
+                    this.userSocket.on('message-received', (data) => {
+                        this.log('用户收到消息: ' + data.content);
+                        this.userMessages.push({
+                            id: data.id || Date.now(),
+                            senderType: data.senderType,
+                            content: data.content,
+                            timestamp: data.timestamp || new Date()
+                        });
+                    });
+
+                    this.userSocket.on('operator-joined', (data) => {
+                        this.log('客服加入会话: ' + data.operatorName);
+                    });
+
+                    this.userSocket.on('chat-error', (error) => {
+                        this.log('用户端错误: ' + error.error);
+                    });
+                },
+
+                connectOperator() {
+                    this.operatorSocket = io('http://localhost:3001', {
+                        transports: ['polling', 'websocket']
+                    });
+
+                    this.operatorSocket.on('connect', () => {
+                        this.operatorConnected = true;
+                        this.log('客服连接成功: ' + this.operatorSocket.id);
+
+                        // 设置客服在线状态
+                        this.operatorSocket.emit('operator-status-change', {
+                            operatorId: this.operatorId,
+                            status: 'online'
+                        });
+                    });
+
+                    this.operatorSocket.on('operator-session-joined', (data) => {
+                        this.operatorJoined = true;
+                        this.log('客服成功加入会话: ' + data.sessionId);
+                    });
+
+                    this.operatorSocket.on('message-history', (data) => {
+                        this.log('收到消息历史: ' + (data.messages ? data.messages.length : 0) + ' 条消息');
+
+                        if (data.messages && data.messages.length > 0) {
+                            this.operatorMessages = data.messages.map(msg => ({
+                                id: msg.id,
+                                senderType: msg.senderType,
+                                content: msg.content,
+                                timestamp: msg.createdAt || msg.timestamp
+                            }));
+                        } else {
+                            this.log('警告: 消息历史为空！');
+                        }
+                    });
+
+                    this.operatorSocket.on('message-received', (data) => {
+                        this.log('客服收到消息: ' + data.content);
+
+                        // 避免重复添加自己的消息
+                        if (data.senderId !== this.operatorId || data.senderType !== 'operator') {
+                            this.operatorMessages.push({
+                                id: data.id || Date.now(),
+                                senderType: data.senderType,
+                                content: data.content,
+                                timestamp: data.timestamp || new Date()
+                            });
+                        }
+                    });
+
+                    this.operatorSocket.on('chat-error', (error) => {
+                        this.log('客服端错误: ' + error.error);
+                    });
+                },
+
+                sendUserMessage() {
+                    if (!this.userSocket || !this.userMessage.trim()) return;
+
+                    this.userSocket.emit('user-send-message', {
+                        content: this.userMessage.trim(),
+                        messageType: 'text'
+                    });
+
+                    this.log('用户发送消息: ' + this.userMessage);
+                    this.userMessage = '';
+                },
+
+                joinSession() {
+                    if (!this.operatorSocket || !this.sessionId) return;
+
+                    this.operatorSocket.emit('operator-join-session', {
+                        operatorId: this.operatorId,
+                        sessionId: this.sessionId
+                    });
+
+                    this.log('客服尝试加入会话: ' + this.sessionId);
+                },
+
+                loadHistory() {
+                    if (!this.operatorSocket || !this.sessionId) return;
+
+                    this.operatorSocket.emit('get-message-history', {
+                        sessionId: this.sessionId,
+                        limit: 50,
+                        offset: 0
+                    });
+
+                    this.log('手动请求消息历史');
+                },
+
+                sendOperatorMessage() {
+                    if (!this.operatorSocket || !this.operatorMessage.trim()) return;
+
+                    this.operatorSocket.emit('operator-send-message', {
+                        content: this.operatorMessage.trim(),
+                        messageType: 'text'
+                    });
+
+                    this.log('客服发送消息: ' + this.operatorMessage);
+                    this.operatorMessage = '';
+                },
+
+                formatTime(timestamp) {
+                    return new Date(timestamp).toLocaleTimeString();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
