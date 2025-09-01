@@ -5,7 +5,7 @@ class ApiService {
     // 配置基础URL
     this.baseURL = process.env.NODE_ENV === 'production' 
       ? window.location.origin 
-      : 'http://localhost:3000';
+      : 'http://localhost:3001';
     
     // 创建axios实例
     this.client = axios.create({
@@ -224,6 +224,29 @@ class ApiService {
       return await this.client.get(url);
     } catch (error) {
       throw this._handleError(error, '获取待处理会话失败');
+    }
+  }
+
+  /**
+   * 获取所有历史会话列表
+   * @param {Object} options - 查询选项
+   * @returns {Promise} API响应
+   */
+  async getAllHistorySessions(options = {}) {
+    try {
+      const params = new URLSearchParams();
+      // 设置默认值，确保获取最新的100条记录
+      params.append('page', options.page || 1);
+      params.append('limit', options.limit || 100);
+      if (options.keyword) params.append('keyword', options.keyword);
+      if (options.status) params.append('status', options.status);
+      if (options.startDate) params.append('startDate', options.startDate);
+      if (options.endDate) params.append('endDate', options.endDate);
+      
+      const url = `/api/chat/sessions/history?${params.toString()}`;
+      return await this.client.get(url);
+    } catch (error) {
+      throw this._handleError(error, '获取历史会话失败');
     }
   }
 

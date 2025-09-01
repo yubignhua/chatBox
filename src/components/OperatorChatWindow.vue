@@ -334,11 +334,19 @@ export default {
       }
       
       try {
+        console.log('加载会话消息，会话ID:', this.currentSession.id)
+        
         // 清空现有消息
         this.messages = []
         
-        // 这里会通过Socket或API加载消息历史
-        // 暂时使用空数组
+        // 通过Socket请求消息历史
+        SocketService.emit('get-message-history', {
+          sessionId: this.currentSession.id,
+          limit: 50,
+          offset: 0
+        })
+        
+        console.log('已请求消息历史')
         
       } catch (error) {
         console.error('加载会话消息失败:', error)
@@ -556,6 +564,7 @@ export default {
      * 添加消息到列表
      */
     addMessage(message) {
+      console.log('添加消息到列表:', message)
       this.messages.push(message)
       this.$nextTick(() => {
         this.scrollToBottom()
@@ -566,8 +575,11 @@ export default {
      * 接收消息
      */
     receiveMessage(messageData) {
+      console.log('OperatorChatWindow 接收消息:', messageData)
+      
       // 避免重复添加自己发送的消息
       if (messageData.senderId === this.operatorId && messageData.senderType === 'operator') {
+        console.log('忽略自己发送的消息')
         return
       }
       
@@ -589,15 +601,22 @@ export default {
      * 接收消息历史
      */
     receiveMessageHistory(historyData) {
-      if (historyData.sessionId !== this.currentSession?.id) return
+      console.log('接收消息历史:', historyData)
+      
+      if (historyData.sessionId !== this.currentSession?.id) {
+        console.log('会话ID不匹配，忽略历史消息')
+        return
+      }
       
       // 清空现有消息
       this.messages = []
       
       // 添加历史消息
       if (historyData.messages && historyData.messages.length > 0) {
+        console.log(`加载 ${historyData.messages.length} 条历史消息`)
+        
         historyData.messages.forEach(msg => {
-          this.addMessage({
+          const message = {
             id: msg.id,
             sessionId: msg.sessionId,
             senderId: msg.senderId,
@@ -606,8 +625,22 @@ export default {
             messageType: msg.messageType || 'text',
             timestamp: msg.createdAt || msg.timestamp,
             status: 'delivered'
-          })
+          }
+          
+          this.messages.push(message)
         })
+        
+        // 滚动到底部
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      } else {
+        console.log('没有历史消息')
+      }
+      
+      // 更新分页信息
+      if (historyData.pagination) {
+        this.hasMoreHistory = historyData.pagination.hasMore
       }
     },
     

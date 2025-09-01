@@ -2,24 +2,31 @@
   <div id="app">
     <el-container>
       <el-header>
-        <h1>客服聊天系统</h1>
+        <h1>京北方客服系统</h1>
         <div class="header-actions">
-          <el-radio-group v-model="currentMode" size="small" @change="handleModeChange">
-            <el-radio-button label="user">用户端</el-radio-button>
-            <el-radio-button label="operator">客服端</el-radio-button>
-            <el-radio-button label="test">测试模式</el-radio-button>
-          </el-radio-group>
+          <!-- 导航菜单 -->
+          <el-menu 
+            :default-active="activeIndex" 
+            class="header-menu" 
+            mode="horizontal" 
+            @select="handleMenuSelect"
+            background-color="#409EFF"
+            text-color="#fff"
+            active-text-color="#ffd04b"
+          >
+            <el-menu-item index="user">用户端</el-menu-item>
+            <el-menu-item index="operator">客服端 (新)</el-menu-item>
+            <el-menu-item index="operator-workspace">客服端 (旧)</el-menu-item>
+            <el-menu-item index="test">测试模式</el-menu-item>
+          </el-menu>
         </div>
       </el-header>
-      <el-main :class="{ 'no-padding': currentMode === 'operator' }">
-        <!-- 用户聊天界面 -->
-        <ChatWindow v-if="currentMode === 'user'" />
-        
-        <!-- 客服工作台 -->
-        <OperatorWorkspace v-else-if="currentMode === 'operator'" />
+      <el-main :class="{ 'no-padding': isOperatorMode }">
+        <!-- 路由视图 -->
+        <router-view v-if="currentMode !== 'test'" />
         
         <!-- 测试界面 -->
-        <div v-else-if="currentMode === 'test'" class="test-section">
+        <div v-if="currentMode === 'test'" class="test-section">
           <h3>系统状态测试</h3>
           <p>Vue2 客服聊天系统客户端已初始化</p>
           <p>Element UI 组件库已集成</p>
@@ -74,23 +81,17 @@
 </template>
 
 <script>
-import ChatWindow from './components/ChatWindow.vue'
-import OperatorWorkspace from './components/OperatorWorkspace.vue'
 import SocketService from './services/SocketService'
 
 export default {
   name: 'App',
-  components: {
-    ChatWindow,
-    OperatorWorkspace
-  },
   data() {
     return {
       isConnected: false,
       connecting: false,
       socketId: null,
       logs: [],
-      currentMode: 'user' // 'user', 'operator', 'test'
+      currentMode: 'user' // 'user', 'operator', 'operator-workspace', 'test'
     }
   },
   computed: {
@@ -102,14 +103,32 @@ export default {
       } else {
         return { type: 'danger', text: '未连接' }
       }
+    },
+    activeIndex() {
+      return this.currentMode
+    },
+    isOperatorMode() {
+      return this.currentMode === 'operator' || this.currentMode === 'operator-workspace'
     }
   },
   methods: {
     /**
-     * 处理模式切换
+     * 处理菜单选择
      */
-    handleModeChange(mode) {
-      this.currentMode = mode
+    handleMenuSelect(index) {
+      this.currentMode = index
+      
+      // 根据选择的模式进行路由跳转
+      const routeMap = {
+        'user': '/user',
+        'operator': '/operator',
+        'operator-workspace': '/operator-workspace',
+        'test': '/' // 测试模式不需要路由跳转
+      }
+      
+      if (index !== 'test' && this.$route.path !== routeMap[index]) {
+        this.$router.push(routeMap[index])
+      }
       
       // 切换模式时断开现有连接
       if (this.isConnected) {
@@ -118,7 +137,7 @@ export default {
         this.socketId = null
       }
       
-      this.addLog(`切换到${this.getModeText(mode)}`, 'info')
+      this.addLog(`切换到${this.getModeText(index)}`, 'info')
     },
     
     /**
@@ -127,7 +146,8 @@ export default {
     getModeText(mode) {
       const modeMap = {
         'user': '用户端',
-        'operator': '客服端',
+        'operator': '客服端 (新)',
+        'operator-workspace': '客服端 (旧)',
         'test': '测试模式'
       }
       return modeMap[mode] || '未知模式'
@@ -192,13 +212,37 @@ export default {
       SocketService.on('connect_error', (error) => {
         this.addLog(`连接错误: ${error.message}`, 'error')
       })
+    },
+    
+    /**
+     * 根据路由同步模式
+     */
+    syncModeWithRoute() {
+      const path = this.$route.path
+      if (path === '/' || path === '/user') {
+        this.currentMode = 'user'
+      } else if (path === '/operator') {
+        this.currentMode = 'operator'
+      } else if (path === '/operator-workspace') {
+        this.currentMode = 'operator-workspace'
+      }
     }
   },
   
   mounted() {
     this.setupSocketListeners()
     this.addLog('客服聊天系统已启动', 'info')
+    
+    // 根据当前路由设置模式
+    this.syncModeWithRoute()
+    
     this.addLog(`当前模式: ${this.getModeText(this.currentMode)}`, 'info')
+  },
+  
+  watch: {
+    '$route'(to) {
+      this.syncModeWithRoute()
+    }
   },
   
   beforeDestroy() {
@@ -234,7 +278,19 @@ export default {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+}
+
+.header-menu {
+  background-color: transparent !important;
+  border-bottom: none !important;
+}
+
+.header-menu .el-menu-item {
+  border-bottom: none !important;
+}
+
+.header-menu .el-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .connection-status-display {

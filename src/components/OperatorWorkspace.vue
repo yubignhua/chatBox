@@ -7,6 +7,7 @@
       @send-quick-reply="handleQuickReply"
       @message-received="handleMessageReceived"
       @message-history="handleMessageHistory"
+      @new-chat-notification="handleNewChatNotification"
       ref="operatorPanel"
     />
     
@@ -83,6 +84,8 @@ export default {
      * 处理会话加入
      */
     handleSessionJoined(sessionData) {
+      console.log('处理会话加入:', sessionData)
+      
       this.currentSession = {
         id: sessionData.sessionId,
         userId: sessionData.userId || 'unknown',
@@ -93,10 +96,15 @@ export default {
         operatorName: sessionData.operatorName
       }
       
+      console.log('设置当前会话:', this.currentSession)
+      
       // 通知聊天窗口加载消息
       this.$nextTick(() => {
         if (this.$refs.chatWindow) {
+          console.log('通知聊天窗口加载消息')
           this.$refs.chatWindow.loadSessionMessages()
+        } else {
+          console.warn('聊天窗口组件未找到')
         }
       })
     },
@@ -105,11 +113,13 @@ export default {
      * 处理会话切换
      */
     handleSessionSwitched(session) {
+      console.log('切换到会话:', session)
       this.currentSession = session
       
       // 通知聊天窗口加载消息
       this.$nextTick(() => {
         if (this.$refs.chatWindow) {
+          console.log('通知聊天窗口加载消息')
           this.$refs.chatWindow.loadSessionMessages()
         }
       })
@@ -131,6 +141,15 @@ export default {
     handleMessageReceived(messageData) {
       if (this.$refs.chatWindow && messageData.sessionId === this.currentSession?.id) {
         this.$refs.chatWindow.receiveMessage(messageData)
+      }
+      
+      // 如果消息不是来自当前会话，显示通知
+      if (messageData.sessionId !== this.currentSession?.id && messageData.senderType === 'user') {
+        this.$message({
+          message: `收到新消息: ${messageData.content.substring(0, 30)}${messageData.content.length > 30 ? '...' : ''}`,
+          type: 'info',
+          duration: 3000
+        })
       }
     },
     
@@ -155,27 +174,85 @@ export default {
       if (this.$refs.operatorPanel) {
         this.$refs.operatorPanel.removeActiveSession(session.id)
       }
-    }
-  },
-  
-  mounted() {
-    // 监听窗口大小变化
-    window.addEventListener('resize', this.handleResize)
-  },
-  
-  beforeDestroy() {
-    window.removeEventListener('resize', this.handleResize)
-  },
-  
-  methods: {
-    ...this.methods,
+    },
+    
+    /**
+     * 处理新聊天通知
+     */
+    handleNewChatNotification(notificationData) {
+      // 显示桌面通知（如果浏览器支持）
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('新的聊天请求', {
+          body: `用户 ${notificationData.userName || '访客'} 发起了聊天请求`,
+          icon: '/favicon.ico',
+          tag: `chat-${notificationData.sessionId}`
+        })
+      }
+      
+      // 播放提示音（可选）
+      this.playNotificationSound()
+    },
     
     /**
      * 处理窗口大小变化
      */
     handleResize() {
       // 响应式处理逻辑
+    },
+    
+    /**
+     * 播放通知提示音
+     */
+    playNotificationSound() {
+      try {
+        // 创建简单的提示音
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1)
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+        
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.3)
+      } catch (error) {
+        console.log('无法播放提示音:', error)
+      }
+    },
+    
+    /**
+     * 请求通知权限
+     */
+    async requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          const permission = await Notification.requestPermission()
+          if (permission === 'granted') {
+            console.log('通知权限已获得')
+          }
+        } catch (error) {
+          console.log('请求通知权限失败:', error)
+        }
+      }
     }
+  },
+  
+  mounted() {
+    // 监听窗口大小变化
+    window.addEventListener('resize', this.handleResize)
+    
+    // 请求通知权限
+    this.requestNotificationPermission()
+  },
+  
+  beforeDestroy() {
+    window.removeEventListener('resize', this.handleResize)
   }
 }
 </script>

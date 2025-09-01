@@ -249,6 +249,9 @@ export default {
         // 加载待处理会话
         await this.loadPendingSessions()
         
+        console.log('客服端连接成功，客服ID:', this.operatorId)
+        console.log('Socket连接状态:', SocketService.isSocketConnected())
+        
         this.$message.success('连接成功')
         
       } catch (error) {
@@ -292,6 +295,7 @@ export default {
     setOperatorStatus(status) {
       if (!this.isConnected) return
       
+      console.log('设置客服状态:', status, '客服ID:', this.operatorId)
       this.operatorStatus = status
       SocketService.emit('operator-status-change', {
         operatorId: this.operatorId,
@@ -339,6 +343,8 @@ export default {
       
       // 接收消息
       SocketService.on('message-received', (data) => {
+        console.log('客服端收到消息:', data)
+        
         // 更新会话的最后消息
         this.updateSessionLastMessage(data.sessionId, data.content, data.senderType)
         
@@ -358,11 +364,67 @@ export default {
       
       // 用户加入聊天（新的待处理会话）
       SocketService.on('chat-session-created', (data) => {
+        console.log('客服端收到新会话通知:', data)
         this.addPendingSession(data)
+        
+        // 通知父组件有新聊天会话
+        this.$emit('new-chat-notification', data)
+        
         this.$message({
           message: `新用户 ${data.userName || '访客'} 发起聊天请求`,
           type: 'info',
           duration: 3000
+        })
+      })
+      
+      // 监听新聊天通知（从管理系统发送的通知）
+      SocketService.on('new-chat-notification', (data) => {
+        console.log('客服端收到新聊天通知:', data)
+        this.addPendingSession({
+          sessionId: data.sessionId,
+          userId: data.userId,
+          userName: data.userName || '访客',
+          timestamp: data.timestamp,
+          lastMessage: '用户发起了聊天请求'
+        })
+        
+        // 通知父组件有新聊天通知
+        this.$emit('new-chat-notification', data)
+        
+        this.$message({
+          message: `新用户发起聊天请求`,
+          type: 'info',
+          duration: 3000
+        })
+      })
+      
+      // 监听新消息通知（用户在等待状态下发送的消息）
+      SocketService.on('new-message-notification', (data) => {
+        console.log('客服端收到新消息通知:', data)
+        
+        // 更新待处理会话的最后消息
+        const pendingSession = this.pendingSessions.find(s => s.id === data.sessionId)
+        if (pendingSession) {
+          pendingSession.lastMessage = data.content
+          pendingSession.updatedAt = new Date(data.timestamp)
+        } else {
+          // 如果会话不在待处理列表中，添加它
+          this.addPendingSession({
+            sessionId: data.sessionId,
+            userId: data.userId,
+            userName: '访客',
+            timestamp: data.timestamp,
+            lastMessage: data.content
+          })
+        }
+        
+        // 通知父组件有新消息通知
+        this.$emit('message-received', data)
+        
+        this.$message({
+          message: `用户发送了新消息: ${data.content.substring(0, 20)}${data.content.length > 20 ? '...' : ''}`,
+          type: 'warning',
+          duration: 5000
         })
       })
       
@@ -462,8 +524,9 @@ export default {
      */
     addPendingSession(sessionData) {
       const session = {
-        id: sessionData.sessionId,
+        id: sessionData.sessionId || sessionData.id,
         userName: sessionData.userName || '访客',
+        userId: sessionData.userId,
         createdAt: sessionData.timestamp || new Date(),
         lastMessage: sessionData.lastMessage || '用户发起了聊天请求'
       }

@@ -29,6 +29,14 @@ class SocketService {
           return;
         }
 
+        // 断开现有连接（如果存在）
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
+
+        console.log('正在连接到 Socket.IO 服务器:', this.serverUrl);
+
         // 创建Socket连接
         this.socket = io(this.serverUrl, {
           transports: ['polling', 'websocket'], // 先尝试 polling，再尝试 websocket
@@ -36,14 +44,22 @@ class SocketService {
           forceNew: true,
           upgrade: true,
           rememberUpgrade: false,
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
           ...options
         });
 
         // 连接成功事件
         this.socket.on('connect', () => {
-          console.log('Socket.IO 连接成功');
+          console.log('Socket.IO 连接成功, Socket ID:', this.socket.id);
           this.isConnected = true;
           this.reconnectAttempts = 0;
+          
+          // 重新绑定所有事件监听器
+          this._rebindEventListeners();
+          
           this._triggerEvent('connected', { socketId: this.socket.id });
           resolve(this.socket);
         });
@@ -223,11 +239,15 @@ class SocketService {
    * @private
    */
   _rebindEventListeners() {
+    if (!this.socket) return;
+    
     this.eventListeners.forEach((callbacks, event) => {
       callbacks.forEach(callback => {
         this.socket.on(event, callback);
       });
     });
+    
+    console.log(`重新绑定了 ${this.eventListeners.size} 个事件监听器`);
   }
 
   /**
