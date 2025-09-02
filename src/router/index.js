@@ -46,7 +46,7 @@ const router = new VueRouter({
 // 路由守卫 - 设置页面标题
 router.beforeEach((to, from, next) => {
   if (to.meta.title) {
-    document.title = `${to.meta.title} - 京北方客服系统`
+    document.title = `${to.meta.title} - 客服系统`
   }
   next()
 })

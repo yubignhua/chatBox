@@ -2,7 +2,7 @@
   <div id="app">
     <el-container>
       <el-header>
-        <h1>京北方客服系统</h1>
+        <h1>客服系统</h1>
         <div class="header-actions">
           <!-- 导航菜单 -->
           <el-menu 
