@@ -228,6 +228,24 @@ class ApiService {
   }
 
   /**
+   * 获取活跃会话列表（等待中和进行中的会话）
+   * @param {Object} options - 查询选项
+   * @returns {Promise} API响应
+   */
+  async getActiveSessions(options = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      
+      const url = `/api/chat/sessions/active${params.toString() ? '?' + params.toString() : ''}`;
+      return await this.client.get(url);
+    } catch (error) {
+      throw this._handleError(error, '获取活跃会话失败');
+    }
+  }
+
+  /**
    * 获取所有历史会话列表
    * @param {Object} options - 查询选项
    * @returns {Promise} API响应

@@ -1,9 +1,10 @@
 <template>
   <div class="operator-chat-interface">
     <!-- 聊天头部 -->
-    <div class="chat-header">
+    <div class="chat-header" :class="{ 'dialog-mode': isDialogMode }">
       <div class="user-info">
         <el-button 
+          v-if="!isDialogMode"
           size="small" 
           type="text" 
           icon="el-icon-arrow-left"
@@ -18,15 +19,16 @@
           <div class="user-meta">
             <h3>{{ session.userName || '访客' }}</h3>
             <span class="user-id">ID: {{ session.userId || 'unknown' }}</span>
+            <span class="session-id">会话: {{ session.id.slice(-8) }}</span>
           </div>
         </div>
       </div>
       
       <div class="chat-actions">
-        <el-tag :type="sessionStatusType" size="small">
+        <!-- <el-tag :type="sessionStatusType" size="small">
           {{ sessionStatusText }}
-        </el-tag>
-        <el-tag v-if="isHistoryMode" size="small" type="info">
+        </el-tag> -->
+        <!-- <el-tag v-if="isHistoryMode" size="small" type="info">
           已结束
         </el-tag>
         <el-tag v-else-if="session.status === 'waiting'" size="small" type="warning">
@@ -34,7 +36,7 @@
         </el-tag>
         <el-tag v-else-if="session.status === 'active'" size="small" type="success">
           进行中
-        </el-tag>
+        </el-tag> -->
         <el-button 
           v-if="canSendMessage"
           size="small" 
@@ -44,6 +46,15 @@
         >
           结束对话
         </el-button>
+        <!-- <el-button 
+          v-if="isDialogMode"
+          size="small" 
+          type="text" 
+          icon="el-icon-close"
+          @click="closeChat"
+        >
+          关闭
+        </el-button> -->
       </div>
     </div>
 
@@ -52,7 +63,7 @@
       <div class="messages-list">
         <!-- 历史消息 -->
         <div v-if="loadingHistory" class="loading-history">
-          <el-loading text="加载历史消息..."></el-loading>
+          <!-- <el-loading text="加载历史消息..."></el-loading> -->
         </div>
         
         <!-- 消息列表 -->
@@ -143,7 +154,7 @@
       
       <!-- 输入框 -->
       <div class="message-input">
-        <div class="input-tools">
+        <!-- <div class="input-tools">
           <el-button 
             size="small" 
             type="text" 
@@ -152,7 +163,7 @@
           >
             快速回复
           </el-button>
-        </div>
+        </div> -->
         
         <div class="input-wrapper">
           <el-input
@@ -218,6 +229,11 @@ export default {
     operatorId: {
       type: String,
       required: true
+    },
+    // 是否为弹窗模式
+    isDialogMode: {
+      type: Boolean,
+      default: false
     }
   },
   
@@ -827,6 +843,13 @@ export default {
      */
     backToMessageList() {
       this.$emit('back-to-list')
+    },
+    
+    /**
+     * 关闭聊天（弹窗模式）
+     */
+    closeChat() {
+      this.$emit('close-chat')
     }
   },
   
@@ -857,6 +880,11 @@ export default {
   background: #f5f7fa;
 }
 
+/* 弹窗模式样式 */
+.chat-dialog .operator-chat-interface {
+  height: 600px;
+}
+
 .chat-header {
   background: #fff;
   padding: 16px 20px;
@@ -864,6 +892,12 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.chat-header.dialog-mode {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e4e7ed;
 }
 
 .user-info {
@@ -884,9 +918,15 @@ export default {
   color: #303133;
 }
 
-.user-id {
+.user-id,
+.session-id {
   font-size: 12px;
   color: #909399;
+  display: block;
+}
+
+.session-id {
+  font-family: 'Monaco', 'Menlo', monospace;
 }
 
 .chat-actions {

@@ -360,7 +360,7 @@ export default {
 .chat-window {
   display: flex;
   flex-direction: column;
-  height: 400px;
+  height: 90vh;
   max-width: 800px;
   margin: 0 auto;
   border: 1px solid #e4e7ed;

@@ -3,29 +3,20 @@
     <!-- 消息列表视图 -->
     <OperatorMessageList
       v-if="currentView === 'messageList'"
+      :current-chat-session-id="currentSession?.id"
       @enter-chat="handleEnterChat"
-    />
-    
-    <!-- 聊天界面视图 -->
-    <OperatorChatInterface
-      v-if="currentView === 'chatInterface'"
-      :session="currentSession"
-      :operator-id="operatorId"
-      @back-to-list="handleBackToList"
     />
   </div>
 </template>
 
 <script>
 import OperatorMessageList from './OperatorMessageList.vue'
-import OperatorChatInterface from './OperatorChatInterface.vue'
 
 export default {
   name: 'OperatorApp',
   
   components: {
     OperatorMessageList,
-    OperatorChatInterface
   },
   
   data() {
@@ -46,13 +37,7 @@ export default {
       this.currentView = 'chatInterface'
     },
     
-    /**
-     * 处理返回消息列表
-     */
-    handleBackToList() {
-      this.currentView = 'messageList'
-      this.currentSession = null
-    }
+   
   }
 }
 </script>
