@@ -1433,7 +1433,7 @@ export default {
   }
   
   .session-item.waiting {
-    background: linear-gradient(135deg, #2d2d2d 0%, #2a2a2a 100%);
+    /* background: linear-gradient(135deg, #2d2d2d 0%, #2a2a2a 100%); */
   }
   
   .session-item.active {

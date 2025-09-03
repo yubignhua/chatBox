@@ -9,10 +9,16 @@ class SocketService {
     this.reconnectDelay = 1000;
     this.eventListeners = new Map();
     
+//  // 服务器地址配置
+//  this.serverUrl = process.env.NODE_ENV === 'production' 
+//  ? window.location.origin 
+//  : 'http://localhost:3001';
+// }
+
     // 服务器地址配置
     this.serverUrl = process.env.NODE_ENV === 'production' 
-      ? window.location.origin 
-      : 'http://localhost:3001';
+      ? 'http://149.88.88.205:3001/'
+      : 'http://149.88.88.205:3001/';
   }
 
   /**

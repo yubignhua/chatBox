@@ -1,10 +1,9 @@
 <template>
   <div id="app">
     <el-container>
-      <el-header>
+      <!-- <el-header>
         <h1>客服系统</h1>
         <div class="header-actions">
-          <!-- 导航菜单 -->
           <el-menu 
             :default-active="activeIndex" 
             class="header-menu" 
@@ -20,7 +19,7 @@
             <el-menu-item index="test">测试模式</el-menu-item>
           </el-menu>
         </div>
-      </el-header>
+      </el-header> -->
       <el-main :class="{ 'no-padding': isOperatorMode }">
         <!-- 路由视图 -->
         <router-view v-if="currentMode !== 'test'" />

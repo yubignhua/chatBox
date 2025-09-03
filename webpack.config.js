@@ -3,15 +3,19 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { VueLoaderPlugin } = require('vue-loader');
 const webpack = require('webpack');
 
+console.log('===process.env.NODE_ENV===', process.env.NODE_ENV)
+
 module.exports = {
   entry: {
     main: './src/main.js',
     operator: './src/operator-main.js'
   },
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    // 打包的时候解开注释(path, publicPath)，否则本地运行不起来
+    // path: path.resolve(__dirname, '../screenServer/public/chatbox'),
+    // publicPath: '/chatbox/',
     filename: '[name].bundle.js',
-    clean: true
+    clean: true,
   },
   module: {
     rules: [

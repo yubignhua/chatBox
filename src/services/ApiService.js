@@ -2,10 +2,14 @@ import axios from 'axios';
 
 class ApiService {
   constructor() {
+
+    // this.baseURL = process.env.NODE_ENV === 'production' 
+    //   ? window.location.origin 
+    //   : 'http://localhost:3001';
     // 配置基础URL
     this.baseURL = process.env.NODE_ENV === 'production' 
-      ? window.location.origin 
-      : 'http://localhost:3001';
+      ? 'http://149.88.88.205:3001/' 
+      : 'http://149.88.88.205:3001/';
     
     // 创建axios实例
     this.client = axios.create({
