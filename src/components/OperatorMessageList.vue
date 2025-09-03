@@ -1064,6 +1064,7 @@ export default {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  margin: auto;
 }
 
 .session-item {
