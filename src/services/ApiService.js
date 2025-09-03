@@ -7,9 +7,10 @@ class ApiService {
     //   ? window.location.origin 
     //   : 'http://localhost:3001';
     // 配置基础URL
-    this.baseURL = process.env.NODE_ENV === 'production' 
-      ? 'http://149.88.88.205:3001/' 
-      : 'http://149.88.88.205:3001/';
+    // this.baseURL = process.env.NODE_ENV === 'production' 
+    //   ? 'http://149.88.88.205:3001/' 
+    //   : 'http://149.88.88.205:3001/';
+    this.baseURL = process.env.VUE_APP_SOCKET_URL;
     
     // 创建axios实例
     this.client = axios.create({

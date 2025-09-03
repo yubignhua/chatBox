@@ -2,18 +2,22 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { VueLoaderPlugin } = require('vue-loader');
 const webpack = require('webpack');
+const Dotenv = require('dotenv-webpack');
 
-console.log('===process.env.NODE_ENV===', process.env.NODE_ENV)
 
-module.exports = {
-  entry: {
-    main: './src/main.js',
-    operator: './src/operator-main.js'
-  },
-  output: {
-    // 打包的时候解开注释(path, publicPath)，否则本地运行不起来
+ // 打包的时候解开注释(path, publicPath)，否则本地运行不起来
     // path: path.resolve(__dirname, '../screenServer/public/chatbox'),
     // publicPath: '/chatbox/',
+
+
+module.exports = (env) => {
+  console.log('env =======', env);
+  const config = {
+    entry: {
+      main: './src/main.js',
+      operator: './src/operator-main.js'
+    },
+  output: {
     filename: '[name].bundle.js',
     clean: true,
   },
@@ -46,11 +50,9 @@ module.exports = {
   },
   plugins: [
     new VueLoaderPlugin(),
-    new webpack.DefinePlugin({
-      'process.env': {
-        NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development'),
-        BASE_URL: JSON.stringify('/')
-      }
+    new Dotenv({
+      path: env && env.production ? './.env.production' : './.env.development',
+      systemvars: true
     }),
     new HtmlWebpackPlugin({
       template: './public/index.html',
@@ -79,4 +81,12 @@ module.exports = {
     hot: true,
     open: true
   }
+  };
+
+  if (env && env.production) {
+    config.output.path = path.resolve(__dirname, '../screenServer/public/chatbox');
+    config.output.publicPath = '/chatbox/';
+  }
+
+  return config;
 };

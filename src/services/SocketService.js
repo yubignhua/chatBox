@@ -15,10 +15,7 @@ class SocketService {
 //  : 'http://localhost:3001';
 // }
 
-    // 服务器地址配置
-    this.serverUrl = process.env.NODE_ENV === 'production' 
-      ? 'http://149.88.88.205:3001/'
-      : 'http://149.88.88.205:3001/';
+    this.serverUrl = process.env.VUE_APP_SOCKET_URL;
   }
 
   /**
