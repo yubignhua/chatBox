@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能客服中心</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 配置 Tailwind 自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#722ED1',
+            neutral: '#F2F3F5',
+            'neutral-dark': '#4E5969',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+    }
+  </style>
+  
+  <style>
+    /* 基础动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+    
+    .message-appear {
+      opacity: 0;
+      animation: fadeIn 0.3s ease forwards;
+    }
+    
+    /* 打字效果 */
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 100% }
+    }
+    
+    .typing-indicator span {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #165DFF;
+      margin: 0 1px;
+      animation: typing 1.4s infinite ease-in-out both;
+    }
+    
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    
+    /* 平滑滚动 */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-inter text-gray-800 min-h-screen flex justify-center p-4 md:p-6 lg:p-8">
+  <!-- 主容器 -->
+  <div class="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[90vh] max-h-[750px] animate-fade-in">
+    
+    <!-- 头部区域 -->
+    <header class="bg-gradient-to-r from-primary to-accent text-white p-4 md:p-5 flex justify-between items-center relative overflow-hidden">
+      <!-- 背景装饰 -->
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+      <div class="absolute bottom-0 left-10 w-32 h-32 bg-white/10 rounded-full -mb-16 blur-2xl"></div>
+      
+      <div class="flex items-center space-x-3 relative z-10">
+        <div class="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+          <i class="fas fa-comments text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold text-shadow">智能客服中心</h1>
+          <p class="text-white/80 text-sm flex items-center">
+            <span class="w-2 h-2 bg-success rounded-full mr-1.5"></span>
+            正在为您服务中
+          </p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 relative z-10">
+        <button class="p-2 rounded-full hover:bg-white/20 transition-colors duration-200" title="语音通话">
+          <i class="fas fa-phone"></i>
+        </button>
+        <button class="p-2 rounded-full hover:bg-white/20 transition-colors duration-200" title="视频通话">
+          <i class="fas fa-video"></i>
+        </button>
+        <button class="p-2 rounded-full hover:bg-white/20 transition-colors duration-200" title="关闭会话">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </header>
+    
+    <!-- 主体内容区域 -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 聊天区域 -->
+      <div class="w-full md:w-2/3 flex flex-col bg-gray-50 relative">
+        <!-- 时间分割线 -->
+        <div class="flex justify-center my-4">
+          <span class="bg-white text-neutral-dark text-xs px-3 py-1 rounded-full shadow-sm">今天 15:30</span>
+        </div>
+        
+        <!-- 聊天容器 -->
+        <div id="chat-container" class="flex-1 p-4 md:p-6 overflow-y-auto scrollbar-hide space-y-6">
+          <!-- 系统消息 -->
+          <div class="flex items-start message-appear" style="animation-delay: 0.1s">
+            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white mr-3 flex-shrink-0">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="chat-message system-message bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
+              <p>您好！欢迎咨询智能客服中心，我是您的专属客服小助手。请问有什么可以帮助您的？</p>
+              <div class="text-xs text-neutral-dark/60 mt-1.5">15:30</div>
+            </div>
+          </div>
+          
+          <!-- 快捷回复选项 -->
+          <div class="flex flex-wrap gap-2 ml-11 message-appear" style="animation-delay: 0.3s">
+            <button class="px-4 py-2 bg-white border border-primary/20 text-primary rounded-full text-sm hover:bg-primary/5 transition-colors hover-lift">
+              查询订单状态
+            </button>
+            <button class="px-4 py-2 bg-white border border-primary/20 text-primary rounded-full text-sm hover:bg-primary/5 transition-colors hover-lift">
+              退换货流程
+            </button>
+            <button class="px-4 py-2 bg-white border border-primary/20 text-primary rounded-full text-sm hover:bg-primary/5 transition-colors hover-lift">
+              会员权益说明
+            </button>
+          </div>
+          
+          <!-- 用户消息 -->
+          <div class="flex items-start justify-end message-appear" style="animation-delay: 0.5s">
+            <div class="chat-message user-message bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-sm max-w-[80%]">
+              <p>你好，我想查询一下我最近的订单物流情况，订单号是20230512001</p>
+              <div class="text-xs text-white/70 mt-1.5 text-right">15:32</div>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden ml-3 flex-shrink-0">
+              <img src="https://picsum.photos/id/64/200" alt="用户头像" class="w-full h-full object-cover">
+            </div>
+          </div>
+          
+          <!-- 系统回复带图片 -->
+          <div class="flex items-start message-appear" style="animation-delay: 0.7s">
+            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white mr-3 flex-shrink-0">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="chat-message system-message bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
+              <p>您好，查询到您的订单信息如下：</p>
+              <div class="bg-neutral rounded-lg p-3 my-3">
+                <div class="font-medium">订单号：20230512001</div>
+                <div class="text-sm text-neutral-dark">商品：无线蓝牙耳机 × 1</div>
+                <div class="text-sm text-neutral-dark">下单时间：2023-05-12 09:45</div>
+                <div class="text-sm text-success mt-1">当前状态：已发货，运输中</div>
+              </div>
+              <p>物流信息：圆通快递 YT8765432109876</p>
+              <div class="mt-2 rounded-lg overflow-hidden">
+                <img src="https://picsum.photos/id/180/400/200" alt="物流追踪地图" class="w-full h-auto rounded-lg">
+              </div>
+              <div class="text-xs text-neutral-dark/60 mt-1.5">15:33</div>
+            </div>
+          </div>
+          
+          <!-- 用户消息 -->
+          <div class="flex items-start justify-end message-appear" style="animation-delay: 0.9s">
+            <div class="chat-message user-message bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-sm max-w-[80%]">
+              <p>大概什么时候能送到呢？我着急用</p>
+              <div class="text-xs text-white/70 mt-1.5 text-right">15:35</div>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden ml-3 flex-shrink-0">
+              <img src="https://picsum.photos/id/64/200" alt="用户头像" class="w-full h-full object-cover">
+            </div>
+          </div>
+          
+          <!-- 正在输入提示 -->
+          <div class="flex items-start message-appear" style="animation-delay: 1.1s">
+            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white mr-3 flex-shrink-0">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="bg-white p-3 rounded-xl shadow-sm">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 输入区域 -->
+        <div class="p-4 border-t border-gray-100 bg-white">
+          <div class="flex items-end mb-2">
+            <button class="p-2 text-neutral-dark hover:text-primary transition-colors" title="表情">
+              <i class="far fa-smile"></i>
+            </button>
+            <button class="p-2 text-neutral-dark hover:text-primary transition-colors" title="图片">
+              <i class="far fa-image"></i>
+            </button>
+            <button class="p-2 text-neutral-dark hover:text-primary transition-colors" title="文件">
+              <i class="far fa-file"></i>
+            </button>
+            <button class="p-2 text-neutral-dark hover:text-primary transition-colors" title="语音">
+              <i class="fas fa-microphone"></i>
+            </button>
+          </div>
+          
+          <div class="flex items-center">
+            <input type="text" class="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="请输入您的问题...">
+            <button class="ml-2 bg-primary hover:bg-primary/90 text-white p-3 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 侧边栏 - 仅在中等屏幕以上显示 -->
+      <div class="hidden md:block w-1/3 bg-white border-l border-gray-100 flex flex-col">
+        <!-- 客服信息 -->
+        <div class="p-5 border-b border-gray-100 bg-gradient-to-b from-primary/5 to-white">
+          <div class="flex items-center space-x-3 mb-3">
+            <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white">
+              <i class="fas fa-user-tie"></i>
+            </div>
+            <div>
+              <h3 class="font-semibold">专属客服 小美</h3>
+              <p class="text-xs text-success flex items-center">
+                <span class="w-2 h-2 bg-success rounded-full mr-1"></span>
+                在线
+              </p>
+            </div>
+          </div>
+          <p class="text-sm text-neutral-dark/80">已为您服务 2 年，熟悉您的购买偏好</p>
+        </div>
+        
+        <!-- 快捷服务 -->
+        <div class="p-5 border-b border-gray-100">
+          <h3 class="font-semibold mb-4 flex items-center">
+            <i class="fas fa-bolt text-primary mr-2"></i>快捷服务
+          </h3>
+          <div class="grid grid-cols-2 gap-3">
+            <button class="flex flex-col items-center justify-center p-3 bg-neutral rounded-xl hover:bg-primary/5 transition-colors hover-lift">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+                <i class="fas fa-box"></i>
+              </div>
+              <span class="text-xs text-center">我的订单</span>
+            </button>
+            <button class="flex flex-col items-center justify-center p-3 bg-neutral rounded-xl hover:bg-primary/5 transition-colors hover-lift">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+                <i class="fas fa-credit-card"></i>
+              </div>
+              <span class="text-xs text-center">支付方式</span>
+            </button>
+            <button class="flex flex-col items-center justify-center p-3 bg-neutral rounded-xl hover:bg-primary/5 transition-colors hover-lift">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+                <i class="fas fa-exchange-alt"></i>
+              </div>
+              <span class="text-xs text-center">退换货</span>
+            </button>
+            <button class="flex flex-col items-center justify-center p-3 bg-neutral rounded-xl hover:bg-primary/5 transition-colors hover-lift">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+                <i class="fas fa-headphones"></i>
+              </div>
+              <span class="text-xs text-center">联系我们</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 常见问题 -->
+        <div class="p-5 border-b border-gray-100 flex-1 overflow-y-auto scrollbar-hide">
+          <h3 class="font-semibold mb-4 flex items-center">
+            <i class="fas fa-question-circle text-primary mr-2"></i>常见问题
+          </h3>
+          <div class="space-y-3">
+            <div class="bg-neutral rounded-xl p-3 hover:bg-primary/5 transition-colors cursor-pointer hover-lift">
+              <h4 class="text-sm font-medium">如何修改收货地址？</h4>
+              <p class="text-xs text-neutral-dark/70 mt-1 line-clamp-2">订单发货前可在"我的订单"中修改收货地址，发货后请联系客服协助处理。</p>
+            </div>
+            <div class="bg-neutral rounded-xl p-3 hover:bg-primary/5 transition-colors cursor-pointer hover-lift">
+              <h4 class="text-sm font-medium">退款多久到账？</h4>
+              <p class="text-xs text-neutral-dark/70 mt-1 line-clamp-2">退款申请审核通过后，将在1-3个工作日内原路返回您的支付账户。</p>
+            </div>
+            <div class="bg-neutral rounded-xl p-3 hover:bg-primary/5 transition-colors cursor-pointer hover-lift">
+              <h4 class="text-sm font-medium">如何查询物流信息？</h4>
+              <p class="text-xs text-neutral-dark/70 mt-1 line-clamp-2">在"我的订单"中找到对应订单，点击"查看物流"即可获取最新物流信息。</p>
+            </div>
+            <div class="bg-neutral rounded-xl p-3 hover:bg-primary/5 transition-colors cursor-pointer hover-lift">
+              <h4 class="text-sm font-medium">会员有哪些特权？</h4>
+              <p class="text-xs text-neutral-dark/70 mt-1 line-clamp-2">会员可享受专属折扣、生日礼遇、免费退换货、专属客服等多项特权。</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 服务信息 -->
+        <div class="p-4 bg-neutral">
+          <div class="flex items-center justify-between text-sm mb-2">
+            <span>在线客服时间</span>
+            <span class="font-medium">8:30-22:30</span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span>客服热线</span>
+            <span class="font-medium text-primary">95558</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
